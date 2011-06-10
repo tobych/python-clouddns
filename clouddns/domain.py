@@ -29,7 +29,13 @@ class Domain(object):
     name = property(fget=lambda self: self._name, fset=__set_name,
         doc="the name of the domain (read-only)")
 
-    def __init__(self, connection=None, name=None, id=None, accountId=None):
+    def __init__(self, connection=None,
+                 name=None,
+                 id=None,
+                 accountId=None,
+                 ttl=None,
+                 emailAddress=None,
+                 ):
         """
         Domains will rarely if ever need to be instantiated directly by the
         user.
@@ -39,28 +45,28 @@ class Domain(object):
         L{list_domains<Connection.list_domains>} and
         other methods on a valid Connection object.
         """
-        self.name = name
         self.conn = connection
+        self.name = name
         self.id = id
         self.accountId = accountId
+        self.ttl = ttl
+        self.emailAddress = emailAddress
 
-    def create_record(self, record_name):
-        pass
+    def get_record(self, record_id):
+        records = self.list_records_info()
+        for rec in  records:
+            if rec['id'] == record_id:
+                return Record(self, record=rec)
+
+        #TODO: Exceptions
+        raise Exception("Not found")
 
     def get_records(self):
         return RecordResults(self, self.list_records_info())
 
-    def get_record(self, record_id):
-        return Record(self, record_id=record_id)
-
-    #TODO: filtering
     def list_records_info(self):
         resp = self._list_records_raw()
         return json_loads(resp)['records']['record']
-
-    def list_records(self):
-        records = self._list_records_raw()
-        print records
 
     def _list_records_raw(self):
         """
@@ -78,6 +84,9 @@ class Domain(object):
 
     def __str__(self):
         return self.name
+
+    def create_record(self, record_name):
+        pass
 
     def delete_record(self, record_name):
         pass
@@ -101,8 +110,8 @@ class DomainResults(object):
                          self._domains[key]['accountId'])
 
     def __getslice__(self, i, j):
-        return [Domain(self.conn, k['name'], k['count'], \
-                              k['size']) for k in self._domains[i:j]]
+        return [Domain(self.conn, k['name'], k['id'], \
+                              k['accountId']) for k in self._domains[i:j]]
 
     def __contains__(self, item):
         return item in self._names
@@ -113,17 +122,3 @@ class DomainResults(object):
 
     def __len__(self):
         return len(self._domains)
-
-    def index(self, value, *args):
-        """
-        returns an integer for the first index of value
-        """
-        return self._names.index(value, *args)
-
-    def count(self, value):
-        """
-        returns the number of occurrences of value
-        """
-        return self._names.count(value)
-
-# vim:set ai sw=4 ts=4 tw=0 expandtab:

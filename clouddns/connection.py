@@ -10,16 +10,16 @@ See COPYING for license information.
 import  os
 import  socket
 import  consts
+import  time
 from Queue  import Queue, Empty, Full
 from errors import ResponseError
 from httplib   import HTTPSConnection, HTTPConnection, HTTPException
 from sys    import version_info
-from time   import time
 from urllib import quote
 
 from utils  import unicode_quote, parse_url, \
  THTTPConnection, THTTPSConnection
-from domain import DomainResults
+from domain import DomainResults, Domain
 from authentication import Authentication
 from    fjson     import json_loads
 # Because HTTPResponse objects *have* to have read() called on them
@@ -134,24 +134,69 @@ class Connection(object):
             response = retry_request()
         return response
 
-    def get_all_domains(self, limit=None, marker=None, **parms):
-        if limit:
-            parms['limit'] = limit
-        if marker:
-            parms['marker'] = marker
-        return DomainResults(self, self.list_domains_info(**parms))
+    def get_domains(self):
+        return DomainResults(self, self.list_domains_info())
 
-    def list_domains_info(self, limit=None, marker=None, **parms):
-        if limit:
-            parms['limit'] = limit
-        if marker:
-            parms['marker'] = marker
-        parms['format'] = 'json'
-        response = self.make_request('GET', ['domains'], parms=parms)
+    def list_domains_info(self):
+        response = self.make_request('GET', ['domains'])
         if (response.status < 200) or (response.status > 299):
             response.read()
             raise ResponseError(response.status, response.reason)
         return json_loads(response.read())['domains']['domain']
+
+    #TODO
+    def get_domain(self, domain_id):
+        pass
+
+    # Take a reponse parse it if there is asyncResponse and wait for
+    # it
+    def wait_for_async_request(self, response):
+        if (response.status < 200) or (response.status > 299):
+            response.read()
+            raise ResponseError(response.status, response.reason)
+        output = json_loads(response.read())
+
+        while True:
+            if 'asyncResponse' in output:
+                jobId = output['asyncResponse']['jobId']
+                response = self.make_request('GET', ['status', jobId])
+                if (response.status < 200) or (response.status > 299):
+                    response.read()
+                    raise ResponseError(response.status, response.reason)
+                _output = response.read().strip()
+                if not _output:
+                    return True
+                output = json_loads(_output)
+                time.sleep(1)
+                continue
+            elif 'DnsFault' in output:
+                raise ResponseError(output['DnsFault']['code'],
+                                    output['DnsFault']['message'])
+            else:
+                return output
+
+    #TODO: We make it syncronous here, we should offer async as well
+    #      unlike API does (choice).
+    def create_domain(self, name, ttl, emailAddress):
+        if not ttl >= 300:
+            raise Exception("Ttl is a minimun of 300 seconds")
+        xml = """<domains xmlns="http://docs.rackspacecloud.com/dns/api/v1.0">
+    <domain name="%(name)s" ttl="%(ttl)s" emailAddress="%(emailAddress)s">
+    </domain>
+</domains>
+""" % locals()
+        response = self.make_request('POST', ['domains'], data=xml)
+        output = self.wait_for_async_request(response)
+
+        if 'domains' in output:
+            domain = output["domains"]["domain"]
+            return Domain(**domain[0])
+        else:
+            raise Exception("This should not happen")
+
+    def delete_domain(self, domain_id, deleteSubdomains=False):
+        response = self.make_request('DELETE', ['domains', domain_id])
+        return self.wait_for_async_request(response)
 
 
 class ConnectionPool(Queue):
@@ -192,7 +237,7 @@ class ConnectionPool(Queue):
         @type connobj: L{Connection}
         """
         try:
-            Queue.put(self, (time(), connobj), block=0)
+            Queue.put(self, (time.time(), connobj), block=0)
         except Full:
             del connobj
 # vim:set ai sw=4 ts=4 tw=0 expandtab:

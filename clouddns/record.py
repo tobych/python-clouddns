@@ -3,21 +3,46 @@ __author__ = "Chmouel Boudjnah <chmouel@chmouel.com>"
 
 
 class Record(object):
-    def __init__(self, domain, record=None, name=None):
+    def __init__(self, domain,
+                 data=None,
+                 ttl=1800,
+                 name=None,
+                 type=None,
+                 id=None):
         self.domain = domain
+        self.data = data
+        self.name = name
+        self.id = id
+        self.ttl = ttl
+        self.type = type
 
-        if record:
-            self.data = record['data']
-            self.name = record['name']
-            self.id = record['id']
-            self.type = record['type']
-            self.ttl = record['ttl']
-        else:
-            self.data = None
-            self.name = None
-            self.id = None
-            self.ttl = 1800
-            self.type = None
+    def update(self, data=None,
+               name=None,
+               ttl=None,
+               type=None,
+               ):
+        def build_it(k, v, d):
+            if v:
+                return ' %s="%s"' % (k, v)
+            else:
+                return ' %s="%s"' % (k, d)
+        xml = '<record '
+        xml += 'id="%s"' % (self.id)
+        xml += build_it('name', name, self.name)
+        xml += build_it('ttl', ttl, self.ttl)
+        xml += build_it('data', data, self.data)
+        #xml += build_it('type', data, self.type)
+        xml += ' />'
+        print xml
+        response = self.domain.conn.make_request('PUT', ["domains",
+                                                  self.domain.id,
+                                                  "records", self.id, ""],
+                                          data=xml)
+        output = self.domain.conn.wait_for_async_request(response)
+        return output
+
+    def __str__(self):
+        return self.name
 
 
 class RecordResults(object):
@@ -37,7 +62,7 @@ class RecordResults(object):
         self.domain = domain
 
     def __getitem__(self, key):
-        return Record(self.domain, record=self._records[key])
+        return Record(self.domain, **(self._records[key]))
 
     def __getslice__(self, i, j):
         return [Record(self.domain, record_id=k) \

@@ -118,7 +118,8 @@ class Connection(object):
             return self.connection.getresponse()
 
         try:
-            if 'PYTHON_CLOUDDNS_DEBUG' in os.environ:
+            if 'PYTHON_CLOUDDNS_DEBUG' in os.environ and \
+                    os.environ['PYTHON_CLOUDDNS_DEBUG'].strip():
                 import sys
                 sys.stderr.write("URL: %s\n" % (path))
                 sys.stderr.write("ARGS: %s\n" % (str(data)))
@@ -149,7 +150,7 @@ class Connection(object):
         pass
 
     # Take a reponse parse it if there is asyncResponse and wait for
-    # it
+    # it (should offer not too wait for it)
     def wait_for_async_request(self, response):
         if (response.status < 200) or (response.status > 299):
             response.read()
@@ -175,8 +176,6 @@ class Connection(object):
             else:
                 return output
 
-    #TODO: We make it syncronous here, we should offer async as well
-    #      unlike API does (choice).
     def create_domain(self, name, ttl, emailAddress):
         if not ttl >= 300:
             raise Exception("Ttl is a minimun of 300 seconds")
@@ -190,7 +189,7 @@ class Connection(object):
 
         if 'domains' in output:
             domain = output["domains"]["domain"]
-            return Domain(**domain[0])
+            return Domain(connection=self, **domain[0])
         else:
             raise Exception("This should not happen")
 

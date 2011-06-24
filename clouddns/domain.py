@@ -56,7 +56,7 @@ class Domain(object):
         records = self.list_records_info()
         for rec in  records:
             if rec['id'] == record_id:
-                return Record(self, record=rec)
+                return Record(self, **rec)
 
         #TODO: Exceptions
         raise Exception("Not found")
@@ -85,11 +85,45 @@ class Domain(object):
     def __str__(self):
         return self.name
 
-    def create_record(self, record_name):
+    def update(self, name=None,
+               ttl=None,
+               emailAddress=None):
+        xml = '<domain xmlns="http://docs.rackspacecloud.com/dns/api/v1.0" '
+
+        if name:
+            xml += ' name="%s"' % (name)
+            self.name = name
+        if ttl:
+            xml += ' ttl="%s"' % (ttl)
+            self.ttl = ttl
+        if emailAddress:
+            xml += ' emailAddress="%s"' % (emailAddress)
+            self.emailAddress = emailAddress
+        xml += ' />'
+
+        response = self.conn.make_request('PUT', ["domains", self.id],
+                                          data=xml)
+        output = self.conn.wait_for_async_request(response)
+        return output
+
+    def _record(self, name, data, type):
         pass
 
-    def delete_record(self, record_name):
-        pass
+    def create_record(self, name, data, type):
+        xml="""<records xmlns="http://docs.rackspacecloud.com/dns/api/v1.0">
+<record type="%(type)s" data="%(data)s" name="%(name)s"/>
+</records>
+        """ % locals()
+        response = self.conn.make_request('POST', ['domains', self.id, 'records'], data=xml)
+        output = self.conn.wait_for_async_request(response)
+        if 'records' in output:
+            record = output["records"]["record"]
+            return Record(domain=self, **record[0])
+        else:
+            raise Exception("This should not happen")
+        
+    def delete_record(self, record_id):
+        response = self.conn.make_request('DELETE', ['domains', self.id, 'records', record_id])
 
 
 class DomainResults(object):

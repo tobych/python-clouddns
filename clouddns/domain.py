@@ -110,20 +110,27 @@ class Domain(object):
         pass
 
     def create_record(self, name, data, type):
-        xml="""<records xmlns="http://docs.rackspacecloud.com/dns/api/v1.0">
+        xml = """<records xmlns="http://docs.rackspacecloud.com/dns/api/v1.0">
 <record type="%(type)s" data="%(data)s" name="%(name)s"/>
 </records>
         """ % locals()
-        response = self.conn.make_request('POST', ['domains', self.id, 'records'], data=xml)
+        response = self.conn.make_request('POST',
+                                          ['domains', self.id, 'records'],
+                                          data=xml)
         output = self.conn.wait_for_async_request(response)
         if 'records' in output:
             record = output["records"]["record"]
             return Record(domain=self, **record[0])
         else:
             raise Exception("This should not happen")
-        
+
     def delete_record(self, record_id):
-        response = self.conn.make_request('DELETE', ['domains', self.id, 'records', record_id])
+        response = self.conn.make_request('DELETE',
+                                          ['domains',
+                                           self.id,
+                                           'records',
+                                           record_id])
+        return response
 
 
 class DomainResults(object):

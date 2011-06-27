@@ -56,14 +56,25 @@ def test():
 
     assert(domain.ttl == ttl)
 
+    # Create Record
+    newRecord = \
+        domain.create_record("test1.chmoutesting.com", "127.0.0.1", "A")
+
     # Get All records
     records = domain.get_records()
-    record = records[0]
+    last_record = records[-1]
+    print last_record
 
     # Get Record by ID
-    record_id = record.id
+    record_id = newRecord.id
     record = domain.get_record(record_id)
 
-    from IPython.Shell import IPShellEmbed;IPShellEmbed()()
-    
+    assert(record.id == newRecord.id)
+
+    # Modify Record data
+    newRecord.update(data="127.0.0.2", ttl=1300)
+
+    # Delete Record
+    domain.delete_record(newRecord.id)
+
 test()

@@ -21,23 +21,27 @@ class Record(object):
                ttl=None,
                type=None,
                ):
-        def build_it(k, v, d):
-            if v:
-                return ' %s="%s"' % (k, v)
-            else:
-                return ' %s="%s"' % (k, d)
+        build_it = lambda k, v, d: ' %s="%s"' % (k, v and v or d)
+        if data:
+            self.data = data
+        elif ttl:
+            self.ttl = ttl
+        elif type:
+            self.type = type
+        elif name:
+            self.name = name
         xml = '<record '
         xml += 'id="%s"' % (self.id)
         xml += build_it('name', name, self.name)
         xml += build_it('ttl', ttl, self.ttl)
         xml += build_it('data', data, self.data)
-        #xml += build_it('type', data, self.type)
+        xml += build_it('type', data, self.type)
         xml += ' />'
-        print xml
-        response = self.domain.conn.make_request('PUT', ["domains",
+        response = self.domain.conn.make_request('PUT',
+                                                 ["domains",
                                                   self.domain.id,
                                                   "records", self.id, ""],
-                                          data=xml)
+                                                 data=xml)
         output = self.domain.conn.wait_for_async_request(response)
         return output
 

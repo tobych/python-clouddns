@@ -106,9 +106,6 @@ class Domain(object):
         output = self.conn.wait_for_async_request(response)
         return output
 
-    def _record(self, name, data, type):
-        pass
-
     def create_record(self, name, data, type):
         xml = """<records xmlns="http://docs.rackspacecloud.com/dns/api/v1.0">
 <record type="%(type)s" data="%(data)s" name="%(name)s"/>

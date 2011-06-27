@@ -52,13 +52,15 @@ class Domain(object):
         self.ttl = ttl
         self.emailAddress = emailAddress
 
-    def get_record(self, record_id):
+    def get_record(self, id=None, **dico):
+        if id:
+            dico['id'] = id
         records = self.list_records_info()
-        for rec in  records:
-            if rec['id'] == record_id:
-                return Record(self, **rec)
-
-        #TODO: Exceptions
+        for record in records:
+            for k in dico:
+                if k in record and record[k] == dico[k]:
+                    return Record(self, **record)
+        #TODO:
         raise Exception("Not found")
 
     def get_records(self):

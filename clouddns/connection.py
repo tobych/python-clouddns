@@ -145,12 +145,19 @@ class Connection(object):
             raise ResponseError(response.status, response.reason)
         return json_loads(response.read())['domains']['domain']
 
-    #TODO
-    def get_domain(self, domain_id):
-        pass
+    def get_domain(self, id=None, **dico):
+        if id:
+            dico['id'] = id
+        domains = self.list_domains_info()
+        for domain in domains:
+            for k in dico:
+                if k in domain and domain[k] == dico[k]:
+                    return Domain(self, **domain)
+        #TODO:
+        raise Exception("Not found")
 
     # Take a reponse parse it if there is asyncResponse and wait for
-    # it (should offer not too wait for it)
+    # it (TODO: should offer to not)
     def wait_for_async_request(self, response):
         if (response.status < 200) or (response.status > 299):
             response.read()

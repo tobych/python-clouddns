@@ -20,18 +20,8 @@ def auth():
     return CNX
 
 
-def test_create_delete(cnx):
-    # CREATE
-    domain_created = cnx.create_domain(name="chmoutest21.com",
-                                       ttl=300,
-                                       emailAddress="foo@foo.com")
-    # Delete
-    cnx.delete_domain(domain_created.id)
-
-
 def test():
     cnx = auth()
-    #test_create_delete(cnx)
 
     # Domain list
     all_domains = cnx.get_domains()
@@ -47,13 +37,20 @@ def test():
 
     for x in all_domains:
         if str(x).startswith("chmoutest"):
-            print "Cleaning: %s" % (x.name)
             cnx.delete_domain(x.id)
 
     # Create Domain
     domain_created = cnx.create_domain(name="chmoutesting.com",
                                        ttl=300,
                                        emailAddress="foo@foo.com")
+
+    # Get domain by id.
+    sDomain = cnx.get_domain(domain_created.id)
+    assert(sDomain.id == domain_created.id)
+
+    # Get domain by name.
+    sDomain = cnx.get_domain(name="chmoutesting.com")
+    assert(sDomain.id == domain_created.id)
 
     domain = domain_created
 
@@ -67,15 +64,12 @@ def test():
     newRecord = \
         domain.create_record("test1.chmoutesting.com", "127.0.0.1", "A")
 
-    # Get All records
-    records = domain.get_records()
-    last_record = records[-1]
-    print last_record
-
     # Get Record by ID
-    record_id = newRecord.id
-    record = domain.get_record(record_id)
+    record = domain.get_record(newRecord.id)
+    assert(record.id == newRecord.id)
 
+    # Get Record by name
+    record = domain.get_record(name="test1.chmoutesting.com")
     assert(record.id == newRecord.id)
 
     # Modify Record data

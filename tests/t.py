@@ -2,10 +2,16 @@
 __author__ = "Chmouel Boudjnah <chmouel@chmouel.com>"
 import clouddns
 import os
+import sys
 
 US_RCLOUD_USER = os.environ.get("US_RCLOUD_USER")
 US_RCLOUD_KEY = os.environ.get("US_RCLOUD_KEY")
 CNX = None
+
+if not US_RCLOUD_KEY or not US_RCLOUD_USER:
+    print "API Keys env not defined"
+    sys.exit(1)
+
 
 def auth():
     global CNX
@@ -31,6 +37,7 @@ def test():
     all_domains = cnx.get_domains()
     # __getitem__
     domain = all_domains[0]
+
     # __getslice__
     domain = all_domains[0:1][0]
     # __contains__

@@ -193,7 +193,8 @@ class Connection(object):
         else:
             raise Exception("This should not happen")
 
-    def delete_domain(self, domain_id, deleteSubdomains=False):
+    #TODO: deleteSubdomain
+    def delete_domain(self, domain_id):
         response = self.make_request('DELETE', ['domains', domain_id])
         return self.wait_for_async_request(response)
 

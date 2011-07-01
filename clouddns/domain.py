@@ -1,9 +1,9 @@
 # -*- encoding: utf-8 -*-
 __author__ = "Chmouel Boudjnah <chmouel@chmouel.com>"
+import json
 
 import consts
 from errors import InvalidDomainName, ResponseError
-from fjson import json_loads
 from record import RecordResults, Record
 
 
@@ -35,6 +35,9 @@ class Domain(object):
                  accountId=None,
                  ttl=None,
                  emailAddress=None,
+                 updated=None,
+                 created=None,
+                 nameservers=[],
                  ):
         """
         Domains will rarely if ever need to be instantiated directly by the
@@ -51,10 +54,19 @@ class Domain(object):
         self.accountId = accountId
         self.ttl = ttl
         self.emailAddress = emailAddress
+        self.updated = updated and \
+            self.conn.convert_iso_datetime(updated) or \
+            None
+        self.created = created and \
+            self.conn.convert_iso_datetime(created) or \
+            None
+        self.nameservers = nameservers
 
     def get_record(self, id=None, **dico):
         if id:
             dico['id'] = id
+        if 'name' in dico:
+            dico['name'] = dico['name'].lower()
         records = self.list_records_info()
         for record in records:
             for k in dico:
@@ -68,7 +80,7 @@ class Domain(object):
 
     def list_records_info(self):
         resp = self._list_records_raw()
-        return json_loads(resp)['records']['record']
+        return json.loads(resp)['records']
 
     def _list_records_raw(self):
         """
@@ -108,20 +120,30 @@ class Domain(object):
         output = self.conn.wait_for_async_request(response)
         return output
 
+    def _record(self, name, data, type):
+        return """<record type="%s" data="%s" name="%s"/>""" % \
+            (type, data, name)
+
     def create_record(self, name, data, type):
-        xml = """<records xmlns="http://docs.rackspacecloud.com/dns/api/v1.0">
-<record type="%(type)s" data="%(data)s" name="%(name)s"/>
-</records>
-        """ % locals()
+        return self.create_records(([name, data, type],))[0]
+
+    def create_records(self, records):
+        xml = \
+            '<recordsList xmlns="http://docs.rackspacecloud.com/dns/api/v1.0">'
+        ret = []
+        for rec in records:
+            ret.append(self._record(*rec))
+        xml += "\n".join(ret)
+        xml += "</recordsList>"
         response = self.conn.make_request('POST',
                                           ['domains', self.id, 'records'],
                                           data=xml)
         output = self.conn.wait_for_async_request(response)
-        if 'records' in output:
-            record = output["records"]["record"]
-            return Record(domain=self, **record[0])
-        else:
-            raise Exception("This should not happen")
+
+        ret = []
+        for record in output['records']:
+            ret.append(Record(domain=self, **record))
+        return ret
 
     def delete_record(self, record_id):
         response = self.conn.make_request('DELETE',

@@ -8,6 +8,8 @@ class Record(object):
                  ttl=1800,
                  name=None,
                  type=None,
+                 updated=None,
+                 created=None,
                  id=None):
         self.domain = domain
         self.data = data
@@ -15,6 +17,12 @@ class Record(object):
         self.id = id
         self.ttl = ttl
         self.type = type
+        self.updated = updated and \
+            self.domain.conn.convert_iso_datetime(updated) or \
+            None
+        self.created = created and \
+            self.domain.conn.convert_iso_datetime(created) or \
+            None
 
     def update(self, data=None,
                name=None,

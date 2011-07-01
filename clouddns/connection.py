@@ -7,21 +7,24 @@ Connection instances are used to communicate with the remote service.
 See COPYING for license information.
 """
 
-import  os
-import  socket
-import  consts
-import  time
-from Queue  import Queue, Empty, Full
+import os
+import socket
+import consts
+import time
+import datetime
+import json
+
+from Queue import Queue, Empty, Full
 from errors import ResponseError
-from httplib   import HTTPSConnection, HTTPConnection, HTTPException
-from sys    import version_info
+from httplib import HTTPSConnection, HTTPConnection, HTTPException
+from sys import version_info
 from urllib import quote
 
 from utils  import unicode_quote, parse_url, \
- THTTPConnection, THTTPSConnection
+    THTTPConnection, THTTPSConnection
 from domain import DomainResults, Domain
 from authentication import Authentication
-from    fjson     import json_loads
+
 # Because HTTPResponse objects *have* to have read() called on them
 # before they can be used again ...
 # pylint: disable-msg=W0612
@@ -82,6 +85,18 @@ class Connection(object):
                                                               HTTPConnection
         self.http_connect()
 
+    def convert_iso_datetime(self, dt):
+        """
+        Convert iso8601 to datetime
+        """
+        isoFormat = "%Y-%m-%dT%H:%M:%S.000+0000"
+        if type(dt) is datetime.datetime:
+            return dt
+        if dt.endswith("Z"):
+            dt = dt.split('Z')[0]
+            isoFormat = "%Y-%m-%dT%H:%M:%S"
+        return datetime.datetime.strptime(dt, isoFormat)
+
     def http_connect(self):
         """
         Setup the http connection instance.
@@ -121,10 +136,15 @@ class Connection(object):
             if 'PYTHON_CLOUDDNS_DEBUG' in os.environ and \
                     os.environ['PYTHON_CLOUDDNS_DEBUG'].strip():
                 import sys
-                sys.stderr.write("URL: %s\n" % (path))
-                sys.stderr.write("ARGS: %s\n" % (str(data)))
+                url = "https://%s%s\n" % \
+                    (self.connection_args[0],
+                     path)
                 sys.stderr.write("METHOD: %s\n" % (str(method)))
+                sys.stderr.write("URL: %s" % (url))
                 sys.stderr.write("HEADERS: %s\n" % (str(headers)))
+                sys.stderr.write("DATA: %s\n" % (str(data)))
+                sys.stderr.write("curl -X '%s' -H 'X-Auth-Token: %s' %s %s" % \
+                                     (method, self.token, url, str(data)))
             self.connection.request(method, path, data, headers)
             response = self.connection.getresponse()
         except (socket.error, IOError, HTTPException):
@@ -143,11 +163,15 @@ class Connection(object):
         if (response.status < 200) or (response.status > 299):
             response.read()
             raise ResponseError(response.status, response.reason)
-        return json_loads(response.read())['domains']['domain']
+        read_output = response.read()
+        return json.loads(read_output)['domains']
 
     def get_domain(self, id=None, **dico):
         if id:
             dico['id'] = id
+        if 'name' in dico:
+            dico['name'] = dico['name'].lower()
+
         domains = self.list_domains_info()
         for domain in domains:
             for k in dico:
@@ -162,11 +186,10 @@ class Connection(object):
         if (response.status < 200) or (response.status > 299):
             response.read()
             raise ResponseError(response.status, response.reason)
-        output = json_loads(response.read())
-
+        output = json.loads(response.read())
         while True:
-            if 'asyncResponse' in output:
-                jobId = output['asyncResponse']['jobId']
+            if 'callbackUrl' in output:
+                jobId = output['jobId']
                 response = self.make_request('GET', ['status', jobId])
                 if (response.status < 200) or (response.status > 299):
                     response.read()
@@ -174,7 +197,7 @@ class Connection(object):
                 _output = response.read().strip()
                 if not _output:
                     return True
-                output = json_loads(_output)
+                output = json.loads(_output)
                 time.sleep(1)
                 continue
             elif 'DnsFault' in output:
@@ -193,9 +216,8 @@ class Connection(object):
 """ % locals()
         response = self.make_request('POST', ['domains'], data=xml)
         output = self.wait_for_async_request(response)
-
         if 'domains' in output:
-            domain = output["domains"]["domain"]
+            domain = output["domains"]
             return Domain(connection=self, **domain[0])
         else:
             raise Exception("This should not happen")

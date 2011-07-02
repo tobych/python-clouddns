@@ -162,8 +162,11 @@ class Connection(object):
     def get_domains(self):
         return DomainResults(self, self.list_domains_info())
 
-    def list_domains_info(self):
-        response = self.make_request('GET', ['domains'])
+    def list_domains_info(self, filter_by_name=None):
+        parms = {}
+        if filter_by_name:
+            parms = { 'name' : filter_by_name}
+        response = self.make_request('GET', ['domains'], parms=parms)
         if (response.status < 200) or (response.status > 299):
             response.read()
             raise ResponseError(response.status, response.reason)
@@ -171,12 +174,14 @@ class Connection(object):
         return json.loads(read_output)['domains']
 
     def get_domain(self, id=None, **dico):
+        filter_by_name = ""
         if id:
             dico['id'] = id
         if 'name' in dico:
             dico['name'] = dico['name'].lower()
+            filter_by_name = dico['name']
 
-        domains = self.list_domains_info()
+        domains = self.list_domains_info(filter_by_name=filter_by_name)
         for domain in domains:
             for k in dico:
                 if k in domain and domain[k] == dico[k]:

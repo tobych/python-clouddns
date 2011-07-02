@@ -206,21 +206,30 @@ class Connection(object):
             else:
                 return output
 
-    def create_domain(self, name, ttl, emailAddress):
+    def _domain(self, name, ttl, emailAddress):
         if not ttl >= 300:
             raise Exception("Ttl is a minimun of 300 seconds")
-        xml = """<domains xmlns="http://docs.rackspacecloud.com/dns/api/v1.0">
-    <domain name="%(name)s" ttl="%(ttl)s" emailAddress="%(emailAddress)s">
-    </domain>
-</domains>
-""" % locals()
+        s = '<domain name="%s" ttl="%s" emailAddress="%s"></domain>'
+        return s % (name, ttl, emailAddress)
+
+    def create_domain(self, name, ttl, emailAddress):
+        domain = [name, ttl, emailAddress]
+        return self.create_domains([domain])[0]
+
+    def create_domains(self, domains):
+        xml = '<domains xmlns="http://docs.rackspacecloud.com/dns/api/v1.0">'
+        ret = []
+        for dom in domains:
+            ret.append(self._domain(*dom))
+        xml += "\n".join(ret)
+        xml += "</domains>"
         response = self.make_request('POST', ['domains'], data=xml)
         output = self.wait_for_async_request(response)
-        if 'domains' in output:
-            domain = output["domains"]
-            return Domain(connection=self, **domain[0])
-        else:
-            raise Exception("This should not happen")
+
+        ret = []
+        for domain in output['domains']:
+            ret.append(Domain(connection=self, **domain))
+        return ret
 
     #TODO: deleteSubdomain
     def delete_domain(self, domain_id):

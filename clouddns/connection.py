@@ -112,6 +112,7 @@ class Connection(object):
         metadata dicts, and an optional dictionary of query parameters,
         performs an http request.
         """
+        query_args = ""
         path = '/%s/%s' % \
                  (self.uri.rstrip('/'), '/'.join(
                    [unicode_quote(i) for i in path]))
@@ -119,7 +120,10 @@ class Connection(object):
             query_args = \
                 ['%s=%s' % (quote(x),
                             quote(str(y))) for (x, y) in parms.items()]
-            path = '%s?%s' % (path, '&'.join(query_args))
+        elif isinstance(parms, list) and parms:
+            query_args = \
+                ["%s" % x for x in parms]
+        path = '%s?%s' % (path, '&'.join(query_args))
 
         headers = {'Content-Length': str(len(data)),
                    'User-Agent': self.user_agent,
@@ -231,9 +235,15 @@ class Connection(object):
             ret.append(Domain(connection=self, **domain))
         return ret
 
-    #TODO: deleteSubdomain
     def delete_domain(self, domain_id):
-        response = self.make_request('DELETE', ['domains', domain_id])
+        return self.delete_domains([domain_id])
+
+    def delete_domains(self, domains_id):
+        ret = ["id=%s" % (i) for i in domains_id]
+        response = self.make_request('DELETE',
+                                     ['domains'],
+                                     parms=ret,
+                                      )
         return self.wait_for_async_request(response)
 
 

@@ -165,7 +165,7 @@ class Connection(object):
     def list_domains_info(self, filter_by_name=None):
         parms = {}
         if filter_by_name:
-            parms = { 'name' : filter_by_name}
+            parms = {'name': filter_by_name}
         response = self.make_request('GET', ['domains'], parms=parms)
         if (response.status < 200) or (response.status > 299):
             response.read()

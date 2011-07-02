@@ -8,17 +8,6 @@ from record import RecordResults, Record
 
 
 class Domain(object):
-    """
-    Container object and Object instance factory.
-
-    If your account has the feature enabled, containers can be publically
-    shared over a global content delivery network.
-
-    @ivar name: the container's name (generally treated as read-only)
-    @type name: str
-    @ivar object_count: the number of objects in this container (cached)
-    @type object_count: number
-    """
     def __set_name(self, name):
         # slashes make for invalid names
         if isinstance(name, (str, unicode)) and \
@@ -39,15 +28,6 @@ class Domain(object):
                  created=None,
                  nameservers=[],
                  ):
-        """
-        Domains will rarely if ever need to be instantiated directly by the
-        user.
-
-        Instead, use the L{create_domain<Connection.create_domain>},
-        L{get_domain<Connection.get_domain>},
-        L{list_domains<Connection.list_domains>} and
-        other methods on a valid Connection object.
-        """
         self.conn = connection
         self.name = name
         self.id = id

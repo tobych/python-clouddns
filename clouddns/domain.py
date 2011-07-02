@@ -126,11 +126,16 @@ class Domain(object):
         return ret
 
     def delete_record(self, record_id):
+        return self.delete_records([record_id])
+
+    def delete_records(self, records_id):
+        ret = ["id=%s" % (i) for i in records_id]
         response = self.conn.make_request('DELETE',
                                           ['domains',
                                            self.id,
-                                           'records',
-                                           record_id])
+                                           'records'],
+                                          parms=ret,
+                                           )
         return response
 
 
